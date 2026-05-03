@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Typing Wizard Duel</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div id="game" class="game-shell">
+      <header class="duel-header">
+        <section class="combatant-panel combatant-panel-player" aria-label="Player status">
+          <div class="combatant-row">
+            <div>
+              <p class="eyebrow">Player Wizard</p>
+              <h2>Keyboardius</h2>
+            </div>
+            <strong id="playerHpText" class="hp-readout">100 / 100 HP</strong>
+          </div>
+          <div class="health-bar" aria-hidden="true">
+            <div id="playerHpFill" class="health-fill health-fill-player" style="width: 100%"></div>
+          </div>
+          <div class="combatant-meta">
+            <span id="playerBlockBadge" class="block-badge">Block 0</span>
+            <span id="phaseLabel" class="phase-label">Phase 1</span>
+          </div>
+        </section>
+
+        <section class="duel-center" aria-label="Duel status">
+          <p id="sequenceLabel" class="sequence-label">Spell 1 / 5</p>
+          <div class="charge-shell">
+            <div id="spellChargeFill" class="charge-fill"></div>
+          </div>
+          <button id="restartButton" class="restart-button" type="button">Restart</button>
+          <details class="settings-panel">
+            <summary>Settings</summary>
+            <label>
+              <input id="reducedMotionToggle" type="checkbox" />
+              Reduced motion
+            </label>
+            <label>
+              <input id="showFpsToggle" type="checkbox" />
+              Show FPS
+            </label>
+            <label>
+              <input id="showDebugToggle" type="checkbox" />
+              Debug state
+            </label>
+            <label>
+              <input id="showHintsToggle" type="checkbox" />
+              Hints
+            </label>
+            <div id="fpsReadout" class="debug-readout" hidden>FPS: --</div>
+            <div id="debugReadout" class="debug-readout" hidden></div>
+          </details>
+        </section>
+
+        <section class="combatant-panel combatant-panel-opponent" aria-label="Opponent status">
+          <div class="combatant-row">
+            <div>
+              <p class="eyebrow">Dummy Opponent</p>
+              <h2>Practice Golem</h2>
+            </div>
+            <strong id="opponentHpText" class="hp-readout">100 / 100 HP</strong>
+          </div>
+          <div class="health-bar" aria-hidden="true">
+            <div id="opponentHpFill" class="health-fill health-fill-opponent" style="width: 100%"></div>
+          </div>
+          <div class="combatant-meta">
+            <span id="opponentBlockBadge" class="block-badge">Block 0</span>
+            <span id="enemyStateLabel" class="phase-label">Preparing</span>
+          </div>
+          <div class="enemy-cast-widget" aria-label="Opponent casting progress">
+            <div class="enemy-cast-row">
+              <span class="readout-label">Enemy spell</span>
+              <strong id="enemySpellName">Preparing...</strong>
+            </div>
+            <div class="enemy-cast-bar" aria-hidden="true">
+              <div id="enemyCastFill" class="enemy-cast-fill"></div>
+            </div>
+            <span id="enemyCastTimer" class="enemy-cast-timer">0.0s</span>
+          </div>
+        </section>
+      </header>
+
+      <main id="arena" class="arena" aria-label="Wizard duel arena">
+        <section class="duelist-zone duelist-zone-player">
+          <div id="playerWizard" class="wizard wizard-player" aria-hidden="true">
+            <div class="wizard-hat"></div>
+            <div class="wizard-face"></div>
+            <div class="wizard-body"></div>
+            <div class="wizard-hand wizard-hand-left"></div>
+            <div class="wizard-hand wizard-hand-right"></div>
+          </div>
+          <div class="nameplate">Keyboardius</div>
+        </section>
+
+        <section class="duelist-zone duelist-zone-opponent">
+          <div id="opponentWizard" class="wizard wizard-opponent" aria-hidden="true">
+            <div class="golem-head"></div>
+            <div class="golem-body"></div>
+            <div class="golem-arm golem-arm-left"></div>
+            <div class="golem-arm golem-arm-right"></div>
+          </div>
+          <div class="nameplate">Practice Golem</div>
+        </section>
+
+        <div id="effectsLayer" class="effects-layer" aria-hidden="true"></div>
+        <div id="incomingWarning" class="incoming-warning" hidden>
+          <p class="eyebrow">Incoming attack</p>
+          <strong id="incomingSpellName">INCOMING: Static Shock</strong>
+          <span id="incomingHint">Finish the current line to resist.</span>
+          <div class="incoming-bar" aria-hidden="true">
+            <div id="incomingWarningFill" class="incoming-fill"></div>
+          </div>
+        </div>
+      </main>
+
+      <section id="spellPanel" class="spell-panel" aria-label="Current spell">
+        <div class="spell-header">
+          <div>
+            <p id="spellTypeLabel" class="eyebrow">Attack spell</p>
+            <h1 id="spellName">I Cast Fireball</h1>
+          </div>
+          <div class="spell-readouts">
+            <div class="combo-box">
+              <span class="readout-label">Combo</span>
+              <strong id="comboCount">0</strong>
+              <div class="combo-meter" aria-hidden="true">
+                <div id="comboFill" class="combo-fill"></div>
+              </div>
+            </div>
+            <div class="strike-box">
+              <span class="readout-label">Strikes</span>
+              <div id="strikeMarkers" class="strike-markers">
+                <span class="strike-marker" data-strike="1">X</span>
+                <span class="strike-marker" data-strike="2">X</span>
+                <span class="strike-marker" data-strike="3">X</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="spell-subheader">
+          <span id="lineProgressText">Line 1 / 4</span>
+          <span id="statusMessage" class="status-message" aria-live="polite">Duel ready.</span>
+        </div>
+
+        <div id="hintToast" class="hint-toast" hidden aria-live="polite"></div>
+
+        <div id="stunOverlay" class="stun-overlay" hidden>
+          <strong id="stunTitle">SPELL FIZZLED!</strong>
+          <span id="stunMessage">Typing focus recovering...</span>
+          <div class="stun-bar" aria-hidden="true">
+            <div id="stunTimerFill" class="stun-fill"></div>
+          </div>
+        </div>
+
+        <ol id="spellLines" class="spell-lines"></ol>
+      </section>
+
+      <div id="matchOverlay" class="match-overlay" hidden>
+        <div class="match-result">
+          <p id="resultKicker" class="eyebrow">Match complete</p>
+          <h2 id="resultTitle">Victory</h2>
+          <p id="resultDescription">The dummy opponent has been defeated.</p>
+          <dl id="matchSummary" class="match-summary"></dl>
+          <button id="overlayRestartButton" class="restart-button" type="button">Restart Duel</button>
+        </div>
+      </div>
+
+      <div id="tutorialOverlay" class="tutorial-overlay" hidden>
+        <div class="tutorial-card">
+          <p class="eyebrow">Training scroll</p>
+          <h2>Arcane Typing Duel 101</h2>
+          <ul>
+            <li>Type the spell text exactly.</li>
+            <li>Finish every line to cast.</li>
+            <li>Wrong keys add strikes; 3 strikes fizzles you briefly.</li>
+            <li>Incoming attack? Finish your current line to resist.</li>
+            <li>Shields add block that absorbs incoming damage.</li>
+          </ul>
+          <button id="tutorialStartButton" class="restart-button" type="button">Start Duel</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/Spell.js" defer></script>
+    <script src="js/BalanceConfig.js" defer></script>
+    <script src="js/SpellBook.js" defer></script>
+    <script src="js/Character.js" defer></script>
+    <script src="js/ComboManager.js" defer></script>
+    <script src="js/DebugConfig.js" defer></script>
+    <script src="js/AudioManager.js" defer></script>
+    <script src="js/HintManager.js" defer></script>
+    <script src="js/MatchStats.js" defer></script>
+    <script src="js/UIManager.js" defer></script>
+    <script src="js/AnimationManager.js" defer></script>
+    <script src="js/DamageManager.js" defer></script>
+    <script src="js/TypingEngine.js" defer></script>
+    <script src="js/InterruptManager.js" defer></script>
+    <script src="js/EnemyAI.js" defer></script>
+    <script src="js/GameManager.js" defer></script>
+    <script src="js/main.js" defer></script>
+  </body>
+</html>
