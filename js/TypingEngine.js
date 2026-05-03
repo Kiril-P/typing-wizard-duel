@@ -98,6 +98,7 @@
         this.callbacks.onSpellComplete &&
           this.callbacks.onSpellComplete({
             spell: this.spell,
+            lineIndex: previousLineIndex,
             correctCharacters: this.correctCharacters,
             cleanLine,
           });

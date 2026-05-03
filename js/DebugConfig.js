@@ -8,6 +8,7 @@
     enableScreenShake: true,
     enableSpellParticles: true,
     enableEnemyAi: true,
+    enableDuelEvents: true,
     showMicroHints: true,
     audioDebug: false,
   };

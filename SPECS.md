@@ -80,6 +80,25 @@ This is a lightweight behavior checklist for Typing Wizard Duel. Use it after ev
 - [ ] Enemy may pause briefly for a readable fake stumble.
 - [ ] Enemy stumble feedback does not spam.
 - [ ] Enemy does not keep casting after match end.
+- [ ] Counter Opening success can briefly delay enemy casting.
+
+## Duel Events
+
+- [ ] Duel events do not start while tutorial is visible.
+- [ ] Duel events start only after Start Duel.
+- [ ] Duel events stop after match end.
+- [ ] Duel event panel does not cover active typing text.
+- [ ] Duel events do not stack on top of incoming attack warnings.
+- [ ] Focus Surge asks the player to finish the current line.
+- [ ] Focus Surge success grants capped guard.
+- [ ] Focus Surge timeout shows a readable miss message without damage.
+- [ ] Volatile Rune asks for clean correct characters.
+- [ ] Volatile Rune success grants a one-time next-cast damage boost.
+- [ ] Volatile Rune fails on mistake or timeout without extra strikes/backlash.
+- [ ] Counter Opening asks the player to finish the current line.
+- [ ] Counter Opening success shows `COUNTER-HEX` and delays enemy casting.
+- [ ] Counter Opening timeout has no direct penalty.
+- [ ] Duel event success/fail feedback is visible and concise.
 
 ## Interrupt System
 
@@ -153,6 +172,9 @@ This is a lightweight behavior checklist for Typing Wizard Duel. Use it after ev
 - [ ] HP damage taken is tracked.
 - [ ] Successful resists are tracked.
 - [ ] Player block absorbed is tracked.
+- [ ] Duel events completed are tracked.
+- [ ] Duel events missed are tracked.
+- [ ] Counter-hexes are tracked.
 - [ ] Best combo is tracked.
 - [ ] Stats reset on restart.
 
@@ -181,6 +203,7 @@ This is a lightweight behavior checklist for Typing Wizard Duel. Use it after ev
 
 - [ ] Audio hooks exist for common gameplay events.
 - [ ] Audio hooks include clean line, guard gain, big hit, and low health events.
+- [ ] Audio hooks include duel event start, success, fail, and counter-hex events.
 - [ ] Audio hooks do not require audio files.
 - [ ] Audio hooks do not log unless audio debug is enabled.
 

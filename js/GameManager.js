@@ -24,6 +24,7 @@
     cleanLineBlock: 3,
     minimumShownGain: 1,
   };
+  const DUEL_EVENTS = BALANCE.duelEvents || {};
 
   class GameManager {
     constructor(documentRef) {
@@ -56,12 +57,22 @@
         durationMs: INCOMING_WARNING_MS,
         onExpired: (payload) => this.resolveIncomingAttack(payload, false),
       });
+      this.duelEvents = new WizardDuel.DuelEventManager({
+        settings: DUEL_EVENTS,
+        getContext: () => this.getDuelEventContext(),
+        callbacks: {
+          onStart: (event) => this.handleDuelEventStart(event),
+          onSuccess: (event, message) => this.handleDuelEventSuccess(event, message),
+          onFail: (result) => this.handleDuelEventFail(result),
+        },
+      });
       this.state = "idle";
       this.currentSpell = this.spellBook.getCurrentSpell();
       this.frameId = null;
       this.lastFrameTime = 0;
       this.stunTimer = null;
       this.lowHealthHookEmitted = false;
+      this.pendingRuneDamageBoost = 1;
       this.typingEngine = new WizardDuel.TypingEngine({
         maxStrikes: MAX_STRIKES,
         mistakeLockoutMs: MISTAKE_LOCKOUT_MS,
@@ -92,8 +103,10 @@
       this.spellBook.reset();
       this.combo.resetAll();
       this.interrupts.clear();
+      this.duelEvents.stop();
       this.enemyAI.stop();
       this.lowHealthHookEmitted = false;
+      this.pendingRuneDamageBoost = 1;
       this.currentSpell = this.spellBook.getCurrentSpell();
       this.state = "tutorial";
       this.ui.hideResult();
@@ -116,6 +129,9 @@
       this.typingEngine.resumeCurrentSpell();
       if (this.config.enableEnemyAi !== false) {
         this.enemyAI.start();
+      }
+      if (this.config.enableDuelEvents !== false) {
+        this.duelEvents.start();
       }
       this.ui.setStatus("Duel started. Type the spell exactly.");
       this.renderAll();
@@ -143,6 +159,12 @@
           this.enemyAI.update(deltaMs);
         }
         this.interrupts.update(deltaMs);
+        if (this.state === "playing" && this.config.enableDuelEvents !== false) {
+          this.duelEvents.update(deltaMs, {
+            canStart: !this.interrupts.isActive(),
+            context: this.getDuelEventContext(),
+          });
+        }
       }
 
       this.ui.renderFrame(this.getRenderContext(), deltaMs);
@@ -201,6 +223,8 @@
       } else if (!event.lineCompleted && !event.spellCompleted) {
         this.ui.setStatus("Correct.");
       }
+
+      this.duelEvents.handleCorrectInput(event);
     }
 
     handleLineComplete(event) {
@@ -221,6 +245,7 @@
             ? " Guard Full."
             : "";
       this.ui.setStatus(`Line ${event.lineIndex + 1} locked.${guardText}`);
+      this.duelEvents.handleLineComplete(event);
       this.renderAll();
     }
 
@@ -236,6 +261,7 @@
       this.ui.setStatus(
         `Strike ${event.strikes}: expected ${this.formatKey(event.expected)}, got ${this.formatKey(event.actual)}.`
       );
+      this.duelEvents.handleMistake(event);
     }
 
     handleStrikeOverload() {
@@ -263,6 +289,8 @@
     }
 
     handleSpellComplete(event) {
+      this.duelEvents.handleLineComplete(event);
+
       if (event.cleanLine) {
         this.grantCleanLineGuard();
       }
@@ -283,10 +311,14 @@
       const hasDamage = spell.damage > 0;
       const hasBlock = spell.block > 0;
       const comboMultiplier = this.combo.getDamageMultiplier();
-      const damage = hasDamage ? Math.round(spell.damage * comboMultiplier) : 0;
+      const runeBoost = this.pendingRuneDamageBoost || 1;
+      const damage = hasDamage ? Math.round(spell.damage * comboMultiplier * runeBoost) : 0;
+      this.pendingRuneDamageBoost = 1;
       this.stats.recordSpellCast();
 
-      this.ui.setStatus(`CAST: ${spell.name}${comboMultiplier > 1 ? " Combo Boost!" : ""}`);
+      this.ui.setStatus(
+        `CAST: ${spell.name}${comboMultiplier > 1 ? " Combo Boost!" : ""}${runeBoost > 1 ? " Rune Boost!" : ""}`
+      );
 
       this.animations
         .playSpellCast({
@@ -305,7 +337,7 @@
               blockResult = this.grantPlayerGuard(spell.block, "Probably Shield");
             }
 
-            this.damage.showSpellReward(spell, damageResult, comboMultiplier, blockResult);
+            this.damage.showSpellReward(spell, damageResult, comboMultiplier, blockResult, { runeBoost });
             this.ui.setStatus(this.describePlayerSpellResult(spell, damageResult, blockResult));
             this.renderAll();
           },
@@ -323,6 +355,7 @@
           this.ui.setStatus("Next spell ready.");
           this.renderAll();
           this.maybeShowSpellHint(this.currentSpell);
+          this.duelEvents.schedulePostSpellOpportunity();
         });
     }
 
@@ -345,6 +378,7 @@
     beginIncomingAttack(spell) {
       const damage = Math.max(1, Math.round(spell.damage * ENEMY_DAMAGE_MULTIPLIER));
       const warningDuration = this.getIncomingWarningDuration(spell);
+      this.duelEvents.cancelForIncoming();
       this.interrupts.start({
         spell,
         damage,
@@ -456,6 +490,7 @@
 
     beginPlayerStun(config) {
       this.clearStunTimer();
+      this.duelEvents.cancelForIncoming();
       this.state = "stunned";
       this.enemyAI.setPaused(true);
       this.typingEngine.setEnabled(false);
@@ -490,6 +525,7 @@
       this.clearStunTimer();
       this.enemyAI.stop();
       this.interrupts.clear();
+      this.duelEvents.stop();
       this.ui.hideIncomingWarning();
       this.ui.hideStunOverlay();
       this.typingEngine.setEnabled(false);
@@ -556,6 +592,52 @@
       return `CAST: ${spell.name}. ${details.join(" / ")}.`;
     }
 
+    handleDuelEventStart(event) {
+      this.audio.emit("duelEventStart", { id: event.id, name: event.name });
+      this.ui.setStatus(`${event.name}: ${event.instruction}`);
+      this.renderAll();
+    }
+
+    handleDuelEventSuccess(event, message) {
+      this.stats.recordDuelEventCompleted();
+      this.audio.emit("duelEventSuccess", { id: event.id, name: event.name });
+
+      if (event.id === "focus-surge") {
+        const guardResult = this.grantPlayerGuard(event.guard, "Focus Surge");
+        this.animations.duelEventResult(message, "success");
+        this.ui.setStatus(
+          guardResult.gained > 0 ? `${message}: +${guardResult.gained} Guard.` : `${message}: Guard Full.`
+        );
+      } else if (event.id === "volatile-rune") {
+        this.pendingRuneDamageBoost = Math.max(this.pendingRuneDamageBoost || 1, event.damageBoostMultiplier);
+        this.animations.duelEventResult(message, "success");
+        this.ui.setStatus(`${message}: next cast gets a rune boost.`);
+      } else if (event.id === "counter-opening") {
+        const delayMs = this.enemyAI.delayCurrentCast(event.enemyDelayMs);
+        this.stats.recordCounterHex();
+        this.audio.emit("counterHex", { delayMs });
+        this.animations.duelEventResult(message, "success");
+        this.ui.setStatus(`${message}: enemy cast delayed ${(delayMs / 1000).toFixed(1)}s.`);
+      }
+
+      this.renderAll();
+    }
+
+    handleDuelEventFail(result) {
+      if (result.countsAsMiss) {
+        this.stats.recordDuelEventMissed();
+      }
+
+      this.audio.emit("duelEventFail", {
+        id: result.event.id,
+        name: result.event.name,
+        countsAsMiss: result.countsAsMiss,
+      });
+      this.animations.duelEventResult(result.message, result.countsAsMiss ? "fail" : "neutral");
+      this.ui.setStatus(result.message);
+      this.renderAll();
+    }
+
     renderAll() {
       this.maybeEmitLowHealthHook();
       this.ui.renderAll(this.getRenderContext());
@@ -582,6 +664,16 @@
         combo: this.combo,
         enemy: this.enemyAI.getDisplayState(),
         incoming: this.interrupts.getDisplayState(),
+        duelEvent: this.duelEvents.getDisplayState(),
+      };
+    }
+
+    getDuelEventContext() {
+      return {
+        lineIndex: this.typingEngine.lineIndex,
+        charIndex: this.typingEngine.charIndex,
+        state: this.state,
+        incomingActive: this.interrupts.isActive(),
       };
     }
 

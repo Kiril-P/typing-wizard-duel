@@ -146,6 +146,17 @@
           <span id="statusMessage" class="status-message" aria-live="polite">Duel ready.</span>
         </div>
 
+        <div id="duelEventPanel" class="duel-event-panel" hidden aria-live="polite">
+          <div class="duel-event-heading">
+            <span class="eyebrow">Duel event</span>
+            <strong id="duelEventName">Focus Surge</strong>
+          </div>
+          <span id="duelEventInstruction">Finish this line before the surge burns out.</span>
+          <div class="duel-event-bar" aria-hidden="true">
+            <div id="duelEventFill" class="duel-event-fill"></div>
+          </div>
+        </div>
+
         <div id="hintToast" class="hint-toast" hidden aria-live="polite"></div>
 
         <div id="stunOverlay" class="stun-overlay" hidden>
@@ -199,6 +210,7 @@
     <script src="js/DamageManager.js" defer></script>
     <script src="js/TypingEngine.js" defer></script>
     <script src="js/InterruptManager.js" defer></script>
+    <script src="js/DuelEventManager.js" defer></script>
     <script src="js/EnemyAI.js" defer></script>
     <script src="js/GameManager.js" defer></script>
     <script src="js/main.js" defer></script>

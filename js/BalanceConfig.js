@@ -24,6 +24,26 @@
       cleanLineBlock: 3,
       minimumShownGain: 1,
     },
+    duelEvents: {
+      firstDelayMs: [10000, 14000],
+      intervalMs: [14000, 22000],
+      postSpellChance: 0.34,
+      postSpellDelayMs: [1600, 3200],
+      feedbackMs: 1300,
+      focusSurge: {
+        durationMs: 5000,
+        guard: 6,
+      },
+      volatileRune: {
+        durationMs: 4500,
+        requiredCorrect: 10,
+        damageBoostMultiplier: 1.15,
+      },
+      counterOpening: {
+        durationMs: 4000,
+        enemyDelayMs: 1800,
+      },
+    },
     playerSpells: {
       fireball: { damage: 28 },
       "probably-shield": { damage: 14, block: 18 },

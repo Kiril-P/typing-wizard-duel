@@ -4,7 +4,7 @@ This is a living architecture map for the current static Typing Wizard Duel prot
 
 ## 1. Project Summary
 
-Typing Wizard Duel is a local browser game where the player types exact multi-line spell text to cast attacks or guard effects against a simulated opponent. The current prototype is Phase 4C: a static HTML/CSS/vanilla JavaScript app with player typing, opponent AI timers, onboarding, one-time micro-hints, incoming attack warnings, resistance by completing the current line, combo-earned guard, block consumption, match stats, win/loss summaries, and a smaller high-level `GameManager`.
+Typing Wizard Duel is a local browser game where the player types exact multi-line spell text to cast attacks or guard effects against a simulated opponent. The current prototype is Phase 4D: a static HTML/CSS/vanilla JavaScript app with player typing, opponent AI timers, onboarding, one-time micro-hints, incoming attack warnings, resistance by completing the current line, combo-earned guard, lightweight duel events during typing, block consumption, match stats, win/loss summaries, and a smaller high-level `GameManager`.
 
 The project must run directly by opening `index.html`. There is no backend, multiplayer, package manager, build step, or module bundler.
 
@@ -25,6 +25,7 @@ The runtime is a single browser page:
 - DOM rendering and settings UI are centralized in `WizardDuel.UIManager`.
 - Damage application, guard/block visuals, and damage text helpers are centralized in `WizardDuel.DamageManager`.
 - Player guard rewards reuse `Character.block` and are capped by `BalanceConfig.comboGuard.maxPlayerBlock`.
+- Timed non-network duel events are owned by `WizardDuel.DuelEventManager` and run from the existing game loop.
 - Match reset enters a tutorial state. Enemy AI and typing pressure start only after the player presses Start Duel.
 
 No ES module imports are used because the app must work from `file://`.
@@ -43,6 +44,7 @@ Defines the static DOM shell:
 - non-intrusive hint toast
 - arena and placeholder character visuals
 - incoming attack warning overlay
+- duel event panel
 - current spell panel
 - combo meter
 - strike markers
@@ -110,6 +112,7 @@ Central tuning table:
 - incoming warning durations
 - player spell damage/block values
 - combo guard cap, clean-line guard, and combo-milestone guard values
+- duel event timing, rewards, and enemy-delay values
 - enemy cast ranges
 - enemy opening/start delay ranges
 - enemy stumble chance, trigger range, and duration range
@@ -138,6 +141,9 @@ Tracks local per-match stats:
 - damage taken
 - successful resists
 - block absorbed
+- duel events completed
+- duel events missed
+- counter-hexes triggered
 - best combo
 
 Stats reset on restart and feed the match result summary. There is no persistence or analytics backend.
@@ -156,6 +162,7 @@ Owns DOM references and UI rendering:
 - renders player/opponent HP and block
 - renders spell header, spell lines, combo, strikes, and charge
 - renders enemy cast progress and incoming warning countdown
+- renders the duel event panel and event glow state classes
 - shows/hides tutorial, stun overlay, incoming warning, and match result overlay
 - renders the post-match summary
 - exposes element lookup helpers for active line/character feedback
@@ -184,6 +191,7 @@ Central coordinator:
 - creates player and opponent `Character` instances
 - owns the player `SpellBook`
 - owns `TypingEngine`, `ComboManager`, `AnimationManager`, `EnemyAI`, `InterruptManager`, `AudioManager`, `DebugConfig`, `UIManager`, `DamageManager`, `HintManager`, and `MatchStats`
+- owns `DuelEventManager`
 - owns match state strings such as `idle`, `playing`, `resolving`, `stunned`, and `ended`
 - uses `tutorial` state after restart before the duel starts
 - owns the `requestAnimationFrame` loop
@@ -193,6 +201,7 @@ Central coordinator:
 - reacts to enemy spell completion
 - starts incoming warnings
 - resolves resistance and unresisted impacts
+- coordinates duel event start/success/failure effects
 - asks `UIManager` to show/hide onboarding and overlays
 - triggers one-time hints
 - records match stats
@@ -308,6 +317,19 @@ Simulates the opponent:
 
 The opponent does not type actual text yet.
 
+### `js/DuelEventManager.js`
+
+Owns lightweight real-time events that make typing less static:
+
+- schedules the first event after Start Duel
+- schedules later events and optional post-spell opportunities
+- tracks one active event or short feedback state
+- supports Focus Surge, Volatile Rune, and Counter Opening
+- reacts to correct input, mistakes, line completion, timeout, and incoming-warning cancellation
+- exposes display state to `UIManager`
+
+It does not mutate HP, block, enemy timers, audio, DOM, or match stats directly. It reports event outcomes back to `GameManager`.
+
 ### `js/InterruptManager.js`
 
 Tracks one incoming attack warning:
@@ -328,6 +350,7 @@ It can start a warning, update it, clear it, expire it, or resolve it as resiste
 5. Each frame, while `state === "playing"`:
    - enemy AI updates its cast progress
    - interrupt warning updates if active
+   - duel events update if no incoming warning is active
    - `GameManager` passes a render context to `UIManager.renderFrame()`
 6. Keyboard input goes to `TypingEngine` only while `state === "playing"`.
 7. Player spell completion moves state to `resolving`.
@@ -345,17 +368,20 @@ It can start a warning, update it, clear it, expire it, or resolve it as resiste
    - increments correct character count
    - increments combo through `ComboManager`
    - grants capped `Combo Guard` on combo milestones
+   - advances Volatile Rune progress if that event is active
    - emits `onCorrect`
    - emits `onLineComplete` with `cleanLine` if the line ended
    - emits `onSpellComplete` with `cleanLine` if the final line ended
    - `GameManager` increments combo and match correct-character stats, then asks `UIManager` and `AnimationManager` for feedback
    - `GameManager` grants capped `Clean Line` guard when a completed line had no mistakes
+   - Focus Surge or Counter Opening can complete when the target line completes
 6. Wrong key:
    - increments strikes
    - starts mistake lockout
    - emits `onMistake`
    - emits `onStrikeOverload` if strikes reached 3
    - `GameManager` records a wrong key and may show the first mistake hint
+   - Volatile Rune fails if active
 
 ## 6. Mistake/Fizzle Flow
 
@@ -382,7 +408,7 @@ It can start a warning, update it, clear it, expire it, or resolve it as resiste
 1. `TypingEngine` emits `onSpellComplete`.
 2. If an incoming warning is active, `GameManager` first resolves it as resisted.
 3. `GameManager` moves to `resolving`, pauses enemy AI, and disables typing.
-4. Attack portions calculate damage using the combo multiplier.
+4. Attack portions calculate damage using the combo multiplier and any one-time Volatile Rune boost.
 5. Guard portions add capped player guard through `DamageManager.grantCappedBlock()`.
 6. Match stats record the spell cast.
 7. `AnimationManager.playSpellCast()` runs anticipation, effect, impact, and cleanup timing.
@@ -396,6 +422,7 @@ It can start a warning, update it, clear it, expire it, or resolve it as resiste
 9. If opponent HP reaches 0, `endMatch("win")` runs.
 10. Otherwise, the player `SpellBook` advances and typing loads the next spell.
 11. Loading `Probably Shield` may show the one-time shield hint.
+12. `DuelEventManager.schedulePostSpellOpportunity()` may shorten the next duel event delay.
 
 ## 8. Enemy AI Flow
 
@@ -421,30 +448,50 @@ It can start a warning, update it, clear it, expire it, or resolve it as resiste
 ## 9. Interrupt/Resistance Flow
 
 1. Enemy attack completion calls `GameManager.beginIncomingAttack(spell)`.
-2. Incoming payload stores spell and scaled enemy damage.
-3. `InterruptManager` starts a spell-specific warning duration:
+2. Any active duel event is cleared so incoming warnings do not stack with duel event UI.
+3. Incoming payload stores spell and scaled enemy damage.
+4. `InterruptManager` starts a spell-specific warning duration:
    - Static Shock: shorter
    - I Cast Fireball: medium
    - Tiny Doom: slightly longer
    - Dramatic Meteor: longest
-4. Incoming UI shows `INCOMING: spell name`, a resist instruction, and countdown bar.
-5. The warning enters an urgent visual state for the final 0.5s.
-6. The first incoming warning may show a one-time micro-hint.
-7. If player completes the current line while warning is active:
+5. Incoming UI shows `INCOMING: spell name`, a resist instruction, and countdown bar.
+6. The warning enters an urgent visual state for the final 0.5s.
+7. The first incoming warning may show a one-time micro-hint.
+8. If player completes the current line while warning is active:
    - `GameManager.handleLineComplete()` calls `resistIncomingAttack()`
    - warning clears
    - damage is reduced by `RESISTED_DAMAGE_MULTIPLIER`
    - `RESISTED!` feedback appears
    - `DamageManager` applies resisted damage and records damage taken/block absorption
    - `GameManager` records a successful resist
-8. If warning expires:
+9. If warning expires:
    - full incoming damage is applied
    - direct hit feedback appears
    - player receives a short typing stun
-9. Enemy-specific directional impact effects play on warning resolution.
-10. The enemy advances to the next spell after resolution.
+10. Enemy-specific directional impact effects play on warning resolution.
+11. The enemy advances to the next spell after resolution.
 
-## 10. Block/Damage Flow
+## 10. Duel Event Flow
+
+`DuelEventManager` starts only after `GameManager.startDuel()` and stops on restart/end.
+
+1. First event is scheduled from `BalanceConfig.duelEvents.firstDelayMs`.
+2. Later events use `duelEvents.intervalMs`, with optional shorter post-spell opportunities.
+3. Incoming warnings take priority; active duel events are cleared before an incoming warning appears.
+4. Focus Surge:
+   - player must finish the current line before timeout
+   - success grants capped player guard through `GameManager.grantPlayerGuard()`
+5. Volatile Rune:
+   - player must type the configured number of correct characters without a mistake
+   - success stores one pending spell damage boost on `GameManager`
+   - mistake or timeout records a missed duel event
+6. Counter Opening:
+   - player must finish the current line before timeout
+   - success calls `EnemyAI.delayCurrentCast()` and records a counter-hex
+7. `UIManager` renders event name, instruction, and timer bar without covering active spell text.
+
+## 11. Block/Damage Flow
 
 Damage math is centralized through `Character.takeDamage()` and coordinated through `DamageManager`.
 
@@ -468,7 +515,7 @@ Player guard is the same numeric resource as `Character.block`. It can be earned
 
 These player guard gains are capped by `BalanceConfig.comboGuard.maxPlayerBlock`. Enemy block grants are not capped by the combo guard rule.
 
-## 11. Onboarding And Hint Flow
+## 12. Onboarding And Hint Flow
 
 1. `GameManager.restart()` enters `tutorial` state.
 2. Tutorial overlay explains exact typing, spell completion, strikes/fizzle, incoming resistance, and shields.
@@ -482,7 +529,7 @@ These player guard gains are capped by `BalanceConfig.comboGuard.maxPlayerBlock`
    - first fizzle
 7. Hints auto-hide, can be disabled by the Hints settings toggle, and are placed above spell lines instead of covering active typing text.
 
-## 12. Match Stats And Summary Flow
+## 13. Match Stats And Summary Flow
 
 `MatchStats` resets on restart and records local counters during gameplay. `GameManager.endMatch(result)` asks `UIManager.showMatchResult(result, stats)` to render:
 
@@ -496,10 +543,13 @@ These player guard gains are capped by `BalanceConfig.comboGuard.maxPlayerBlock`
 - damage taken
 - successful resists
 - block absorbed
+- duel events completed
+- duel events missed
+- counter-hexes
 
 The summary is local to the current match and is not persisted.
 
-## 13. Animation/Feedback Flow
+## 14. Animation/Feedback Flow
 
 `GameManager` decides what happened. `AnimationManager` decides how it looks.
 
@@ -509,6 +559,7 @@ Examples:
 - mistake: active line shakes and strike marker slams
 - clean line: capped guard gain text such as `Clean Line +3 Guard`
 - combo milestone: floating combo text and capped `Combo Guard +5`
+- duel event success/fail: compact event panel feedback and floating result text
 - player spell cast: caster pose, spell effect, impact flash, damage number
 - player spell reward: `CAST: spell name`, damage/guard gained, combo boost text, `BIG HIT`, or `DEVASTATING`
 - enemy spell impact: directional effect from enemy side or player-side impact marker
@@ -519,9 +570,9 @@ Examples:
 - resisted attack: floating `RESISTED!`
 - unresisted attack: direct hit flash, screen shake, player hit animation
 - block: shield glow and blocked damage number
-- audio hooks: emitted silently unless `audioDebug` is enabled, including `cleanLine`, `guardGain`, `bigHit`, and `lowHealth`
+- audio hooks: emitted silently unless `audioDebug` is enabled, including `cleanLine`, `guardGain`, `bigHit`, `lowHealth`, `duelEventStart`, `duelEventSuccess`, `duelEventFail`, and `counterHex`
 
-## 14. Known Constraints
+## 15. Known Constraints
 
 - Must run directly from `index.html`.
 - Must remain HTML/CSS/vanilla JavaScript.
@@ -531,19 +582,20 @@ Examples:
 - Placeholder CSS/HTML visuals are acceptable.
 - Reduced motion must preserve feedback while reducing strong shake/flash.
 
-## 15. Known Limitations
+## 16. Known Limitations
 
 - `GameManager.js` is larger than the preferred 300-line target and owns many responsibilities.
 - `UIManager.js` is intentionally broad after the Phase 4B extraction because it owns DOM references plus rendering; split it further only when a clear seam appears.
 - `AnimationManager.js` is also above the preferred size and owns many effect styles.
 - Per-frame rendering currently calls `UIManager.renderFrame()`, which updates enemy casting, warning UI, FPS sampling, and optional debug readout.
 - Opponent AI uses timers, not actual typed text.
+- Duel events are local-only timing prompts, not multiplayer-ready authoritative events.
 - Enemy spell effects are placeholder CSS/HTML effects.
 - Audio hooks exist but no real audio playback exists.
 - No automated test framework exists; verification is manual/browser-based.
 - Tutorial and hints are simple local UI state; there is no persistent first-run memory.
 
-## 16. Rules For Updating This File
+## 17. Rules For Updating This File
 
 Update `ARCHITECTURE.md` when:
 

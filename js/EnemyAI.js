@@ -47,6 +47,16 @@
       this.paused = paused;
     }
 
+    delayCurrentCast(durationMs) {
+      if (!this.enabled || !this.currentSpell) {
+        return 0;
+      }
+
+      const delay = Math.max(0, Math.round(durationMs));
+      this.startDelayMs += delay;
+      return delay;
+    }
+
     update(deltaMs) {
       if (!this.enabled || this.paused || !this.currentSpell) {
         return;

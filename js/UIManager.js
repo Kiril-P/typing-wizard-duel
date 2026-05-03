@@ -78,6 +78,7 @@
       this.renderCharge(context.typing.chargePercent);
       this.renderEnemyCasting(context.enemy, context.incoming.active);
       this.renderIncomingWarning(context.incoming);
+      this.renderDuelEvent(context.duelEvent);
     }
 
     renderFrame(context, deltaMs) {
@@ -85,6 +86,7 @@
       this.applyTensionClasses(context);
       this.renderEnemyCasting(context.enemy, context.incoming.active);
       this.renderIncomingWarning(context.incoming);
+      this.renderDuelEvent(context.duelEvent);
       this.renderDebug(context);
     }
 
@@ -233,7 +235,8 @@
         `Line ${context.typing.lineIndex + 1}:${context.typing.charIndex} | ` +
         `Combo ${context.combo.combo} | ` +
         `Enemy ${context.enemy.progressPercent.toFixed(0)}% | ` +
-        `Warn ${context.incoming.active ? Math.ceil(context.incoming.remainingMs) + "ms" : "none"}`;
+        `Warn ${context.incoming.active ? Math.ceil(context.incoming.remainingMs) + "ms" : "none"} | ` +
+        `Event ${context.duelEvent.visible ? context.duelEvent.id : "none"}`;
     }
 
     applyTensionClasses(context) {
@@ -248,6 +251,28 @@
       this.elements.gameRoot.classList.toggle("line-near-complete", typingActive && remaining > 0 && remaining <= 6);
       this.elements.gameRoot.classList.toggle("spell-final-line", typingActive && Boolean(finalLine));
       this.elements.gameRoot.classList.toggle("incoming-brace", Boolean(context.incoming.active));
+      this.elements.gameRoot.classList.toggle("duel-event-active", Boolean(context.duelEvent.active));
+      ["focus-surge", "volatile-rune", "counter-opening"].forEach((eventId) => {
+        this.elements.gameRoot.classList.toggle(
+          `duel-event-${eventId}`,
+          Boolean(context.duelEvent.active && context.duelEvent.id === eventId)
+        );
+      });
+    }
+
+    renderDuelEvent(state) {
+      if (!state || !state.visible) {
+        this.elements.duelEventPanel.hidden = true;
+        this.elements.duelEventPanel.className = "duel-event-panel";
+        this.elements.duelEventFill.style.width = "0%";
+        return;
+      }
+
+      this.elements.duelEventPanel.hidden = false;
+      this.elements.duelEventPanel.className = `duel-event-panel ${state.id} ${state.result}`;
+      this.elements.duelEventName.textContent = state.name;
+      this.elements.duelEventInstruction.textContent = state.instruction;
+      this.elements.duelEventFill.style.width = `${state.remainingPercent}%`;
     }
 
     showIncomingWarning(spell) {
@@ -331,6 +356,9 @@
         ["Damage taken", stats.damageTaken],
         ["Successful resists", stats.successfulResists],
         ["Block absorbed", stats.blocksAbsorbed],
+        ["Duel events won", stats.duelEventsCompleted],
+        ["Duel events missed", stats.duelEventsMissed],
+        ["Counter-hexes", stats.counterHexes],
       ];
 
       rows.forEach(([label, value]) => {
@@ -378,6 +406,10 @@
         phaseLabel: this.document.getElementById("phaseLabel"),
         lineProgressText: this.document.getElementById("lineProgressText"),
         statusMessage: this.document.getElementById("statusMessage"),
+        duelEventPanel: this.document.getElementById("duelEventPanel"),
+        duelEventName: this.document.getElementById("duelEventName"),
+        duelEventInstruction: this.document.getElementById("duelEventInstruction"),
+        duelEventFill: this.document.getElementById("duelEventFill"),
         spellLines: this.document.getElementById("spellLines"),
         strikeMarkers: Array.from(this.document.querySelectorAll(".strike-marker")),
         comboCount: this.document.getElementById("comboCount"),

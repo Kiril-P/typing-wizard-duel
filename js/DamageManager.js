@@ -76,7 +76,8 @@
       }
     }
 
-    showSpellReward(spell, result, comboMultiplier, blockResult) {
+    showSpellReward(spell, result, comboMultiplier, blockResult, options) {
+      const settings = options || {};
       const details = [];
 
       if (spell.damage > 0) {
@@ -93,6 +94,10 @@
           details.push(`Combo Boost x${comboMultiplier.toFixed(1)}`);
         } else if (result.damage > 0) {
           details.push("Clean hit");
+        }
+
+        if (settings.runeBoost > 1) {
+          details.push(`Rune Boost x${settings.runeBoost.toFixed(2)}`);
         }
       }
 

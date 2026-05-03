@@ -20,7 +20,11 @@
         "low-health",
         "line-near-complete",
         "spell-final-line",
-        "incoming-brace"
+        "incoming-brace",
+        "duel-event-active",
+        "duel-event-focus-surge",
+        "duel-event-volatile-rune",
+        "duel-event-counter-opening"
       );
       this.elements.spellPanel.classList.remove("danger", "failed", "stunned");
       this.elements.playerWizard.classList.remove("casting", "failed", "shielded", "hit");
@@ -69,6 +73,12 @@
       const label = this.createEffect("floating-text", `Combo ${combo}`);
       this.elements.effectsLayer.appendChild(label);
       this.after(900, () => label.remove());
+    }
+
+    duelEventResult(message, result) {
+      const label = this.createEffect(`floating-text duel-event-label ${result || ""}`, message);
+      this.elements.effectsLayer.appendChild(label);
+      this.after(980, () => label.remove());
     }
 
     spellReward(title, detail, type) {

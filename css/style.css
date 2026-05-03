@@ -347,6 +347,28 @@ h2 {
     0 0 42px rgba(240, 93, 94, 0.22);
 }
 
+.duel-event-active .arena {
+  box-shadow:
+    inset 0 -70px 90px rgba(0, 0, 0, 0.36),
+    0 0 0 2px rgba(91, 199, 242, 0.11),
+    0 0 36px rgba(91, 199, 242, 0.14);
+}
+
+.duel-event-focus-surge .spell-panel {
+  border-color: rgba(255, 216, 106, 0.34);
+  box-shadow: 0 16px 42px var(--shadow), 0 0 26px rgba(255, 216, 106, 0.12);
+}
+
+.duel-event-volatile-rune .spell-panel {
+  border-color: rgba(156, 121, 255, 0.38);
+  box-shadow: 0 16px 42px var(--shadow), 0 0 26px rgba(156, 121, 255, 0.14);
+}
+
+.duel-event-counter-opening .spell-panel {
+  border-color: rgba(91, 199, 242, 0.42);
+  box-shadow: 0 16px 42px var(--shadow), 0 0 26px rgba(91, 199, 242, 0.16);
+}
+
 .arena::after {
   content: "";
   position: absolute;
@@ -728,6 +750,71 @@ h2 {
   margin-top: 14px;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.duel-event-panel {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(91, 199, 242, 0.28);
+  border-radius: 8px;
+  background: rgba(91, 199, 242, 0.075);
+  box-shadow: 0 0 22px rgba(91, 199, 242, 0.08);
+}
+
+.duel-event-panel[hidden] {
+  display: none;
+}
+
+.duel-event-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.duel-event-heading strong {
+  color: var(--gold-bright);
+  font-size: 1rem;
+}
+
+#duelEventInstruction {
+  color: rgba(246, 240, 220, 0.88);
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.duel-event-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.duel-event-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue), var(--gold-bright));
+  transition: width 80ms linear;
+}
+
+.duel-event-panel.success {
+  border-color: rgba(124, 224, 160, 0.48);
+  background: rgba(33, 79, 58, 0.22);
+}
+
+.duel-event-panel.fail {
+  border-color: rgba(240, 93, 94, 0.45);
+  background: rgba(103, 31, 42, 0.22);
+}
+
+.duel-event-panel.volatile-rune .duel-event-fill {
+  background: linear-gradient(90deg, var(--violet), var(--gold-bright));
+}
+
+.duel-event-panel.counter-opening .duel-event-fill {
+  background: linear-gradient(90deg, var(--red), var(--blue));
 }
 
 .stun-overlay {
@@ -1355,6 +1442,22 @@ h2 {
   top: 28%;
   color: #ffd8d8;
   font-size: clamp(1rem, 2vw, 1.55rem);
+}
+
+.duel-event-label {
+  top: 32%;
+  color: var(--blue);
+  font-size: clamp(1.1rem, 2.5vw, 2rem);
+}
+
+.duel-event-label.success {
+  color: var(--green);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 0 18px rgba(124, 224, 160, 0.78);
+}
+
+.duel-event-label.fail {
+  color: #ffd8d8;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), 0 0 18px rgba(240, 93, 94, 0.72);
 }
 
 .impact-flash {

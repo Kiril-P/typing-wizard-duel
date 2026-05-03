@@ -15,6 +15,9 @@
       this.damageTaken = 0;
       this.successfulResists = 0;
       this.blocksAbsorbed = 0;
+      this.duelEventsCompleted = 0;
+      this.duelEventsMissed = 0;
+      this.counterHexes = 0;
       this.bestCombo = 0;
     }
 
@@ -50,6 +53,18 @@
 
     recordResist() {
       this.successfulResists += 1;
+    }
+
+    recordDuelEventCompleted() {
+      this.duelEventsCompleted += 1;
+    }
+
+    recordDuelEventMissed() {
+      this.duelEventsMissed += 1;
+    }
+
+    recordCounterHex() {
+      this.counterHexes += 1;
     }
   }
 

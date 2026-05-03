@@ -15,6 +15,9 @@ Useful current debug questions:
 - How much time remains on the enemy cast timer?
 - Is an incoming warning active?
 - How much time remains in the interrupt window?
+- Is a duel event active or showing feedback?
+- How much time remains on the duel event?
+- Did a duel event complete, miss, or clear because an incoming warning took priority?
 - What are player/opponent HP and block values?
 - Is player guard capped at the configured `comboGuard.maxPlayerBlock`?
 - Did the current completed line count as clean or mistake-tainted?
@@ -45,6 +48,7 @@ Implemented in `js/DebugConfig.js`:
 - `enableScreenShake`
 - `enableSpellParticles`
 - `enableEnemyAi`
+- `enableDuelEvents`
 - `showMicroHints`
 - `audioDebug`
 
@@ -79,6 +83,7 @@ Current debug state line includes:
 - combo
 - enemy cast progress
 - interrupt warning remaining time
+- active duel event id and feedback state
 
 Current non-debug onboarding values:
 
@@ -107,6 +112,7 @@ Future debug panel values may include:
 - combo guard cap and current player guard
 - current clean-line eligibility
 - active tension classes
+- duel event next timer, active event, and feedback state
 
 The panel should not overlap active typing text or incoming warnings.
 
@@ -117,6 +123,7 @@ Watch these areas before adding more visual complexity:
 - `GameManager.tick()` runs every animation frame and passes state to `UIManager.renderFrame()`.
 - `UIManager.renderEnemyCasting()` currently updates cast progress every frame.
 - `UIManager.renderIncomingWarning()` updates warning countdown every frame while active.
+- `UIManager.renderDuelEvent()` updates only the compact event panel and timer bar while visible.
 - `UIManager.applyTensionClasses()` toggles only root classes each frame; keep this cheap and avoid adding DOM queries inside it.
 - `UIManager.renderDebug()` runs every frame but only writes optional small debug text when enabled.
 - `UIManager.renderSpellLines()` rebuilds all spell line DOM and should not be called every frame.
@@ -127,12 +134,15 @@ Watch these areas before adding more visual complexity:
 - `EnemyAI.update()` now handles start delay and stumble pauses without adding intervals/timeouts.
 - `AudioManager.emit()` is no-op unless `audioDebug` is enabled.
 - New Phase 4C hooks `cleanLine`, `guardGain`, `bigHit`, and `lowHealth` should remain silent unless audio debug or real audio playback is intentionally added.
+- Duel event hooks `duelEventStart`, `duelEventSuccess`, `duelEventFail`, and `counterHex` should also stay silent unless audio debug or real audio playback is intentionally added.
 - `HintManager` uses one short timeout for the currently visible hint and clears it on restart/hide.
 - Tutorial overlay does not run its own loop.
 - Match summary rendering happens once at match end, not per frame.
 - Balance tuning lives in `BalanceConfig.js`; avoid duplicating tunables across files.
+- Duel event tuning lives under `BalanceConfig.duelEvents`; do not hide event durations or rewards in `GameManager`.
 - Combo guard tuning lives under `BalanceConfig.comboGuard`; do not hard-code the guard cap in `GameManager` or `DamageManager`.
 - `DamageManager` should stay event-driven; do not move damage work into the per-frame loop.
+- `DuelEventManager` is driven by the existing `GameManager.tick()` loop and must not add independent intervals.
 
 Avoid:
 
@@ -151,6 +161,7 @@ Manual checks:
 - Check whether typing response feels immediate during large spell animations.
 - Verify restart does not leave old timers or warnings running.
 - Verify restart hides old hints, clears old summaries, and returns to tutorial.
+- Verify restart clears active duel events and feedback state.
 - Verify a 2-3 minute match does not degrade responsiveness.
 
 Possible future instrumentation:
