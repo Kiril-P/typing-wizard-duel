@@ -4,7 +4,7 @@
 
 Type ridiculous incantations under pressure—three mistakes can turn a fireball into a fizzle.
 
-**[▶ Play in browser](https://kpetrovski.me/play/typing-wizard-duel/)**
+**[▶ Play in browser](https://typing-wizard.kirilpetrovski.com/)**
 
 ![Typing Wizard Duel: 01](docs/media/16-typing-wizard-duel-01.png)
 
